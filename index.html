@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calcio al castello - Verticale</title>
+<style>
+:root{--bg:#f4f2ec;--fg:#1d1d1a;--mu:#66645c;--card:#fffefb;--bd:#d8d4c6;--felt:#2d7449;--ln:#a9d3b6;--rim:#6b4a2b;--cue:#fff;--tg:#d4552b;--path:#14559b;--pin:#eadfc4;--ac:#14559b;--red:#d63031;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1a17;--fg:#ecebe3;--mu:#a5a398;--card:#252522;--bd:#3d3c37;--felt:#1c5233;--ln:#4e8a68;--rim:#4a3320;--tg:#ef8a63;--path:#79b6f2;--ac:#79b6f2;--red:#ff6b6b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1a17;--fg:#ecebe3;--mu:#a5a398;--card:#252522;--bd:#3d3c37;--felt:#1c5233;--ln:#4e8a68;--rim:#4a3320;--tg:#ef8a63;--path:#79b6f2;--ac:#79b6f2;--red:#ff6b6b;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:500px;margin:0 auto;padding:10px 8px 24px}
+h1{font-size:20px;margin:0 0 2px;font-weight:700}
+p.s{margin:0 0 8px;color:var(--mu);font-family:system-ui,sans-serif;font-size:12.5px;line-height:1.35}
+svg#t{width:100%;max-height:68vh;height:auto;display:block;margin:0 auto;touch-action:none;user-select:none}
+.b{cursor:grab}.b:active{cursor:grabbing}
+.toolbar{display:flex;gap:8px;align-items:center;margin:8px 0;font:13px system-ui,sans-serif;flex-wrap:wrap;justify-content:space-between}
+.tool-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nav-box{display:inline-flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--bd);padding:3px 6px;border-radius:8px}
+.nav-btn{background:var(--bg);border:1px solid var(--bd);color:var(--fg);border-radius:6px;width:30px;height:28px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700;font-size:14px;user-select:none}
+.nav-btn:disabled{opacity:0.35;cursor:not-allowed}
+.nav-btn:not(:disabled):active{background:var(--felt);color:#fff}
+.nav-counter{font-weight:600;min-width:44px;text-align:center;font-size:12.5px}
+.top-cue{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--bd);padding:3px 8px 3px 5px;border-radius:8px}
+.top-cue svg{display:block;flex-shrink:0}
+.top-cue-txt{font-size:11.5px;font-weight:600;color:var(--fg);line-height:1.1}
+.top-cue-sub{font-size:10.5px;color:var(--mu);font-weight:400}
+.opt-label{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--fg);cursor:pointer;user-select:none}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-family:system-ui,sans-serif}
+.card h2{font:700 16px Georgia,serif;margin:0 0 5px}
+ol{margin:4px 0 6px;padding-left:18px}li{margin:2px 0;font-size:13.5px}
+.err{color:var(--tg)}
+:root{--ye:#f2c200}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ye:#f5d84a}}
+:root[data-theme="dark"]{--ye:#f5d84a}
+</style></head><body><main>
+<h1>Calcio al castello</h1>
+<p class="s">Tavolo in verticale per smartphone. Trascina bianca, gialla e pallino (rosso). Calcolo tiri a sponda verso il castello.</p>
+<svg id="t" viewBox="0 0 420 760" role="img" aria-label="Tavolo da biliardo verticale"></svg>
+<div class="toolbar">
+  <div class="tool-left">
+    <div class="nav-box" aria-label="Navigatore soluzioni">
+      <button type="button" class="nav-btn" id="prev" title="Precedente" aria-label="Precedente">&#x25C0;</button>
+      <span class="nav-counter" id="count">0/0</span>
+      <button type="button" class="nav-btn" id="next" title="Successiva" aria-label="Successiva">&#x25B6;</button>
+    </div>
+    <div class="top-cue" id="top-cue-box" title="Punto di battuta sulla palla">
+      <svg id="top-cue-svg" viewBox="0 0 40 40" width="30" height="30" role="img">
+        <circle cx="20" cy="20" r="18" fill="var(--cue)" stroke="#555" stroke-width="1.2"/>
+        <circle id="top-cue-dot" cx="20" cy="20" r="3.5" fill="var(--tg)"/>
+      </svg>
+      <div>
+        <div class="top-cue-txt" id="top-cue-txt">Centro</div>
+        <div class="top-cue-sub" id="top-cue-sub">senza effetto</div>
+      </div>
+    </div>
+  </div>
+  <label class="opt-label"><input type="checkbox" id="fx" checked> Effetto</label>
+</div>
+<section class="card" aria-live="polite" id="res"></section>
+</main>
+<script>
+const MAX_SPONDE = 10;
+// Dimensioni tavolo verticale: Largh 4 sponde (W_v=4), Lungh 8 sponde (H_v=8)
+const W_v=4, H_v=8, U=88, OX=34, OY=28, D=61.5/355, R=D/2, PR=0.05;
+const PINS_V=[[0,0],[0,0.2],[0,-0.2],[0.2,0],[-0.2,0]];
+const box_v={x0:R, x1:W_v-R, y0:R, y1:H_v-R};
+// Biliardo in verticale: X va da 0 a 4 (sponde lunghe a sx e dx), Y va da 0 a 8 (corte in basso e in alto)
+const B_v={cue:{x:1,y:2}, tgt:{x:3,y:6}, red:{x:3,y:3.5}, cst:{x:2,y:4}};
+const NAME_V={L:'sponda lunga sinistra',R:'sponda lunga destra',B:'sponda corta bassa',T:'sponda corta alta'};
+const svg=document.getElementById('t'),res=document.getElementById('res');
+const countEl=document.getElementById('count'),btnPrev=document.getElementById('prev'),btnNext=document.getElementById('next');
+const cueDot=document.getElementById('top-cue-dot'),cueTxt=document.getElementById('top-cue-txt'),cueSub=document.getElementById('top-cue-sub');
+let sel=0,sols=[],info=null;
+const f=n=>n.toFixed(2).replace('.',',');
+const S_v=p=>[OX+p.x*U, OY+(H_v-p.y)*U];
+
+function refl_v(p,r){
+  return r=='L'?{x:2*box_v.x0-p.x,y:p.y}:r=='R'?{x:2*box_v.x1-p.x,y:p.y}:r=='B'?{x:p.x,y:2*box_v.y0-p.y}:{x:p.x,y:2*box_v.y1-p.y};
+}
+const SC={};
+function seqs(n){
+  if(SC[n])return SC[n];
+  const o=[];
+  (function rec(s){
+    if(s.length)o.push(s);
+    if(s.length<n)for(const r of 'LRBT')if(s[s.length-1]!==r)rec(s.concat(r));
+  })([]);
+  return SC[n]=o;
+}
+function dseg(p,a,b){
+  const vx=b.x-a.x,vy=b.y-a.y,l=vx*vx+vy*vy;
+  let t=l?((p.x-a.x)*vx+(p.y-a.y)*vy)/l:0;
+  t=Math.max(0,Math.min(1,t));
+  return Math.hypot(p.x-a.x-t*vx,p.y-a.y-t*vy);
+}
+function sim_v(p0,d,L){
+  let p={...p0},dx=d.x,dy=d.y,rem=L;
+  const pts=[{...p}],rails=[];
+  for(let k=0;k<12;k++){
+    const tx=dx>1e-12?(box_v.x1-p.x)/dx:dx<-1e-12?(box_v.x0-p.x)/dx:Infinity;
+    const ty=dy>1e-12?(box_v.y1-p.y)/dy:dy<-1e-12?(box_v.y0-p.y)/dy:Infinity;
+    const t=Math.min(tx,ty);
+    if(t>=rem-1e-9){pts.push({x:p.x+dx*rem,y:p.y+dy*rem});return{pts,rails}}
+    if(Math.abs(tx-ty)<1e-7)return null;
+    p={x:p.x+dx*t,y:p.y+dy*t};pts.push({...p});rem-=t;
+    if(tx<ty){rails.push(dx>0?'R':'L');dx=-dx;}
+    else{rails.push(dy>0?'T':'B');dy=-dy;}
+  }
+  return null;
+}
+const CF=0.25,DEC=0.7;let CUR=null;
+function trace_v(p0,ph,sg,k){
+  let p={x:p0.x,y:p0.y},dx=Math.cos(ph),dy=Math.sin(ph);
+  const pts=[p],rails=[];
+  for(let j=0;j<k;j++){
+    const tx=dx>1e-12?(box_v.x1-p.x)/dx:dx<-1e-12?(box_v.x0-p.x)/dx:Infinity;
+    const ty=dy>1e-12?(box_v.y1-p.y)/dy:dy<-1e-12?(box_v.y0-p.y)/dy:Infinity;
+    if(Math.abs(tx-ty)<1e-7)return null;
+    const t=Math.min(tx,ty);p={x:p.x+dx*t,y:p.y+dy*t};pts.push(p);
+    const s=sg*Math.pow(DEC,j)*CF;
+    if(tx<ty){
+      const r=dx>0?'R':'L';rails.push(r);
+      dy+=(r=='R'?-1:1)*s*Math.abs(dx);dx=-dx;
+    }else{
+      const r=dy>0?'T':'B';rails.push(r);
+      dx+=(r=='B'?-1:1)*s*Math.abs(dy);dy=-dy;
+    }
+    const l=Math.hypot(dx,dy);dx/=l;dy/=l;
+  }
+  return{pts,rails,d:{x:dx,y:dy},A:p};
+}
+function ev_v(tr,G){
+  const A=tr.A,d=tr.d;
+  return{f:d.x*(G.y-A.y)-d.y*(G.x-A.x),al:d.x*(G.x-A.x)+d.y*(G.y-A.y)};
+}
+function chk_v(P,u,T,pins,red){
+  const n=P.length,G=P[n-1],a=P[n-2],l=Math.hypot(G.x-a.x,G.y-a.y);
+  if(l<1e-6)return -1;
+  const cs=((G.x-a.x)*u.x+(G.y-a.y)*u.y)/l;
+  if(cs<0.26)return -1;
+  for(let i=0;i<n-1;i++){
+    if(i<n-2&&dseg(T,P[i],P[i+1])<D+0.02)return -1;
+    if(dseg(red,P[i],P[i+1])<D+0.01)return -1;
+    for(const p of pins)if(!p.gone&&dseg(p,P[i],P[i+1])<R+PR+0.01)return -1;
+  }
+  return Math.acos(Math.min(1,cs))*180/Math.PI;
+}
+function refine_v(out,c,T,G,u,pins,red,sg,k,lo,hi,key){
+  let flo=ev_v(trace_v(c,lo,sg,k),G).f;
+  for(let it=0;it<40;it++){
+    const m=(lo+hi)/2,tr=trace_v(c,m,sg,k);
+    if(!tr||tr.rails.join('')!==key)return;
+    const f=ev_v(tr,G).f;
+    if(f*flo>0){lo=m;flo=f}else hi=m;
+  }
+  const tr=trace_v(c,(lo+hi)/2,sg,k);
+  if(!tr||tr.rails.join('')!==key)return;
+  const e=ev_v(tr,G);
+  if(Math.abs(e.f)>1e-4||e.al<=0)return;
+  const A=tr.A,d=tr.d;
+  const tx=d.x>1e-12?(box_v.x1-A.x)/d.x:d.x<-1e-12?(box_v.x0-A.x)/d.x:Infinity;
+  const ty=d.y>1e-12?(box_v.y1-A.y)/d.y:d.y<-1e-12?(box_v.y0-A.y)/d.y:Infinity;
+  if(e.al>=Math.min(tx,ty)-1e-6)return;
+  const P=tr.pts.concat([{x:G.x,y:G.y}]),cut=chk_v(P,u,T,pins,red);
+  if(cut<0)return;
+  if(out.some(o=>o.s===sg&&o.tp===CUR.tp&&o.rails.join('')===key))return;
+  out.push({n:k,rails:tr.rails,P,cut,ang:0,s:sg,m:CUR.m,tp:CUR.tp,tr:CUR.tr,G,u});
+}
+function spin_v(out,G,u,pins,red,maxN){
+  const c=B_v.cue,T=B_v.tgt,N=1440;
+  for(const sg of [-1,-0.5,0.5,1]){
+    let prev=null;
+    for(let i=0;i<=N;i++){
+      const ph=i/N*2*Math.PI,cur=[];
+      for(let k=1;k<=maxN;k++){
+        const tr=trace_v(c,ph,sg,k);
+        if(!tr)break;
+        cur[k]={f:ev_v(tr,G).f,key:tr.rails.join('')};
+      }
+      if(prev)for(let k=1;k<cur.length;k++){
+        const a=prev[k],b=cur[k];
+        if(a&&b&&a.key===b.key&&a.f*b.f<0&&Math.abs(a.f)<1.5&&Math.abs(b.f)<1.5){
+          refine_v(out,c,T,G,u,pins,red,sg,k,(i-1)/N*2*Math.PI,ph,a.key);
+        }
+      }
+      prev=cur;
+    }
+  }
+}
+function livePins_v(){
+  return PINS_V.map(q=>{
+    const p={x:B_v.cst.x+q[0],y:B_v.cst.y+q[1]};
+    p.gone=[B_v.cue,B_v.tgt,B_v.red].some(b=>Math.hypot(b.x-p.x,b.y-p.y)<R+PR);
+    return p;
+  });
+}
+function solveOne_v(maxN,cfg,pins,red,out,fx){
+  const c=B_v.cue,T=B_v.tgt,u=cfg.u,G=cfg.G,m=cfg.m;
+  const ss = (m > 0) ? [[]].concat(seqs(maxN)) : seqs(maxN);
+
+  for(const s of ss){
+    let Gi=G;
+    for(let i=s.length-1;i>=0;i--)Gi=refl_v(Gi,s[i]);
+    const L=Math.hypot(Gi.x-c.x,Gi.y-c.y);
+    if(L<1e-6)continue;
+    const r=sim_v(c,{x:(Gi.x-c.x)/L,y:(Gi.y-c.y)/L},L);
+    if(!r||r.rails.join('')!==s.join(''))continue;
+    const P=r.pts,n=P.length;
+    if(Math.hypot(P[n-1].x-G.x,P[n-1].y-G.y)>1e-6)continue;
+    const a=P[n-2],ll=Math.hypot(G.x-a.x,G.y-a.y);
+    if(ll<1e-6)continue;
+    const d2={x:(G.x-a.x)/ll,y:(G.y-a.y)/ll},cs=d2.x*u.x+d2.y*u.y;
+    if(cs<0.26)continue;
+    let ok=true;
+    for(let i=0;i<n-1;i++){
+      if(i<n-2&&dseg(T,P[i],P[i+1])<D+0.02)ok=false;
+      if(dseg(red,P[i],P[i+1])<D+0.01)ok=false;
+      for(const p of pins)if(!p.gone&&dseg(p,P[i],P[i+1])<R+PR+0.01)ok=false;
+    }
+    if(!ok)continue;
+    out.push({n:s.length,rails:s,P,cut:Math.acos(Math.min(1,cs))*180/Math.PI,ang:Math.atan2(P[1].y-P[0].y,P[1].x-P[0].x)*180/Math.PI,m,tp:cfg.tp,tr:cfg.tr,G,u});
+  }
+  if(fx&&m<=1&&maxN>0){CUR=cfg;spin_v(out,G,u,pins,red,maxN);}
+}
+function solve_v(maxN){
+  const T=B_v.tgt,C=B_v.cst,red=B_v.red,dl=Math.hypot(C.x-T.x,C.y-T.y);
+  if(dl<0.4)return{err:'La gialla è già nel castello: non serve tirare.'};
+  const pins=livePins_v(),fx=document.getElementById('fx').checked,out=[],cfgs=[];
+
+  for(const ts of [[]].concat(seqs(3))){
+    let Ci=C;
+    for(let i=ts.length-1;i>=0;i--)Ci=refl_v(Ci,ts[i]);
+    const L=Math.hypot(Ci.x-T.x,Ci.y-T.y);
+    if(L<0.4)continue;
+    const u={x:(Ci.x-T.x)/L,y:(Ci.y-T.y)/L},r=sim_v(T,u,L);
+    if(!r||r.rails.join('')!==ts.join(''))continue;
+
+    let tgtBlockedByRed=false;
+    for(let k=0;k<r.pts.length-1;k++){
+      if(dseg(red, r.pts[k], r.pts[k+1]) < D + 0.01){
+        tgtBlockedByRed=true; break;
+      }
+    }
+    if(tgtBlockedByRed) continue;
+
+    if(ts.length > 0){
+      let tgtHitsCastleEarly=false;
+      for(let k=0;k<r.pts.length-2;k++){
+        for(const p of pins){
+          if(!p.gone && dseg(p, r.pts[k], r.pts[k+1]) < R+PR+0.01){
+            tgtHitsCastleEarly=true; break;
+          }
+        }
+        if(tgtHitsCastleEarly) break;
+      }
+      if(tgtHitsCastleEarly) continue;
+    }
+
+    const G={x:T.x-u.x*D,y:T.y-u.y*D};
+    if(G.x<box_v.x0||G.x>box_v.x1||G.y<box_v.y0||G.y>box_v.y1)continue;
+    cfgs.push({m:ts.length,u,G,tp:r.pts,tr:r.rails});
+  }
+
+  if(!cfgs.length)return{err:'Nessuna traiettoria valida verso il castello (corsia ostruita).'};
+  for(const cfg of cfgs)solveOne_v(cfg.m?Math.min(maxN,4):maxN,cfg,pins,red,out,fx);
+  out.sort((a,b)=>(a.n+a.m)-(b.n+b.m)||Math.abs(a.s||0)-Math.abs(b.s||0)||a.cut-b.cut);
+  const cnt={},pick=[];
+  for(const q of out){
+    const k=q.n+q.m;
+    cnt[k]=(cnt[k]||0)+1;
+    if(cnt[k]<=3&&pick.length<12)pick.push(q);
+  }
+  return{sols:pick};
+}
+function frac(cut){
+  const o=1-Math.sin(cut*Math.PI/180);
+  return o>=0.9?'palla piena':o>=0.625?'circa 3/4':o>=0.375?'circa metà':o>=0.19?'circa 1/4':'circa 1/8';
+}
+function hitTxt_v(r,p){
+  return (r=='L'||r=='R')?'a '+f(p.y)+' diamanti dal basso':'a '+f(p.x)+' diamanti da sinistra';
+}
+function base_v(){
+  let h='<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+  h+=`<rect x="${OX-16}" y="${OY-16}" width="${W_v*U+32}" height="${H_v*U+32}" rx="14" fill="var(--rim)"/>`;
+  h+=`<rect x="${OX}" y="${OY}" width="${W_v*U}" height="${H_v*U}" rx="3" fill="var(--felt)"/>`;
+  for(let i=1;i<W_v;i++)h+=`<line x1="${OX+i*U}" y1="${OY}" x2="${OX+i*U}" y2="${OY+H_v*U}" stroke="var(--ln)" stroke-width="0.6" opacity="0.45"/>`;
+  for(let j=1;j<H_v;j++)h+=`<line x1="${OX}" y1="${OY+j*U}" x2="${OX+W_v*U}" y2="${OY+j*U}" stroke="var(--ln)" stroke-width="0.6" opacity="0.45"/>`;
+  
+  // Diamanti orizzontali (sponde corte)
+  for(let i=0;i<=W_v;i++){
+    h+=`<text x="${OX+i*U}" y="${OY-20}" text-anchor="middle" font-size="11" fill="var(--mu)" font-family="system-ui,sans-serif">${i}</text>`;
+    if(i>0&&i<W_v){
+      h+=`<rect x="${OX+i*U-3}" y="${OY-10}" width="6" height="6" fill="#e6d9b8" transform="rotate(45 ${OX+i*U} ${OY-7})"/><rect x="${OX+i*U-3}" y="${OY+H_v*U+4}" width="6" height="6" fill="#e6d9b8" transform="rotate(45 ${OX+i*U} ${OY+H_v*U+7})"/>`;
+    }
+  }
+  // Diamanti verticali (sponde lunghe)
+  for(let j=0;j<=H_v;j++){
+    h+=`<text x="${OX-22}" y="${OY+(H_v-j)*U+4}" text-anchor="end" font-size="11" fill="var(--mu)" font-family="system-ui,sans-serif">${j}</text>`;
+    if(j>0&&j<H_v){
+      h+=`<rect x="${OX-10}" y="${OY+(H_v-j)*U-3}" width="6" height="6" fill="#e6d9b8" transform="rotate(45 ${OX-7} ${OY+(H_v-j)*U})"/><rect x="${OX+W_v*U+4}" y="${OY+(H_v-j)*U-3}" width="6" height="6" fill="#e6d9b8" transform="rotate(45 ${OX+W_v*U+7} ${OY+(H_v-j)*U})"/>`;
+    }
+  }
+  return h+'<g id="dyn"></g>';
+}
+function dyn_v(){
+  const T=B_v.tgt,C=B_v.cst,c=B_v.cue,red=B_v.red;let h='';
+  const [tx,ty]=S_v(T),[cx,cy]=S_v(C),[ux,uy]=S_v(c),[rx,ry]=S_v(red);
+  const rp=R*U;
+  const s=sols[sel];
+  {
+    const tp=s?s.tp:[T,C];
+    for(let i=0;i<tp.length-1;i++){
+      const a=S_v(tp[i]),b=S_v(tp[i+1]);
+      let x1=a[0],y1=a[1],x2=b[0],y2=b[1];
+      const l=Math.hypot(x2-x1,y2-y1)||1,last=i==tp.length-2;
+      if(i==0){x1+=(x2-x1)/l*rp;y1+=(y2-y1)/l*rp;}
+      if(last){x2-=(x2-x1)/l*10;y2-=(y2-y1)/l*10;}
+      h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--ye)" stroke-width="2.5" stroke-dasharray="7 5" stroke-linecap="round"${last?' marker-end="url(#ar)"':''}/>`;
+    }
+    if(s){
+      const [gx,gy]=S_v(s.G);
+      h+=`<circle cx="${gx}" cy="${gy}" r="${rp}" fill="none" stroke="var(--path)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+      for(let i=1;i<tp.length-1;i++){
+        const [x,y]=S_v(tp[i]);
+        h+=`<circle cx="${x}" cy="${y}" r="3.5" fill="var(--ye)" stroke="#8a6d00"/>`;
+      }
+    }
+  }
+  if(s){
+    const P=s.P;
+    for(let i=0;i<P.length-1;i++){
+      const a=S_v(P[i]),b=S_v(P[i+1]);
+      let x2=b[0],y2=b[1];const last=i==P.length-2;
+      let x1=a[0],y1=a[1];const l=Math.hypot(x2-x1,y2-y1)||1;
+      if(i==0){x1+=(x2-x1)/l*rp;y1+=(y2-y1)/l*rp;}
+      if(last){x2-=(x2-x1)/l*rp*1.1;y2-=(y2-y1)/l*rp*1.1;}
+      h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--path)" stroke-width="2.5" stroke-linecap="round"${last?' marker-end="url(#ar)"':''}/>`;
+    }
+    for(let i=1;i<P.length-1;i++){
+      const [x,y]=S_v(P[i]),r=s.rails[i-1];
+      const ox=r=='L'?-15:r=='R'?15:0,oy=r=='B'?16:r=='T'?-10:4;
+      h+=`<circle cx="${x}" cy="${y}" r="3.5" fill="var(--path)"/><text x="${x+ox}" y="${y+oy}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" font-family="system-ui,sans-serif" stroke="var(--rim)" stroke-width="3" paint-order="stroke">${i}</text>`;
+    }
+  }
+  const lp=livePins_v();
+  h+=`<g>${lp.map((q,i)=>{const [px,py]=S_v(q);return `<circle cx="${px}" cy="${py}" r="${i?3:4}" fill="${q.gone?'none':'var(--pin)'}" stroke="#8a7a52" stroke-width="1"${q.gone?' stroke-dasharray="2 2" opacity="0.6"':''}/>`}).join('')}<circle cx="${cx}" cy="${cy}" r="22" fill="transparent"/></g>`;
+  h+=`<g class="b" data-b="red"><circle cx="${rx}" cy="${ry}" r="${rp*0.96}" fill="var(--red)" stroke="#7a1212" stroke-width="1"/><circle cx="${rx}" cy="${ry}" r="20" fill="transparent"/></g>`;
+  h+=`<g class="b" data-b="tgt"><circle cx="${tx}" cy="${ty}" r="${rp}" fill="var(--ye)" stroke="#8a6d00" stroke-width="1"/><circle cx="${tx}" cy="${ty}" r="20" fill="transparent"/></g>`;
+  h+=`<g class="b" data-b="cue"><circle cx="${ux}" cy="${uy}" r="${rp}" fill="var(--cue)" stroke="#555" stroke-width="1"/><circle cx="${ux}" cy="${uy}" r="20" fill="transparent"/></g>`;
+  
+  const lab=(p,t)=>{const [x,y]=S_v(p);return `<text x="${x}" y="${y-16}" text-anchor="middle" font-size="11.5" fill="#fff" font-family="system-ui,sans-serif" stroke="var(--rim)" stroke-width="3" paint-order="stroke">${t}</text>`};
+  h+=lab(c,'bianca')+lab(T,'gialla')+lab(red,'pallino')+lab(C,'castello');
+  document.getElementById('dyn').innerHTML=h;
+}
+function gnote(){
+  const g=livePins_v().filter(p=>p.gone).length;
+  return g?'<p style="margin:6px 0 0;color:var(--mu);font-size:12px">'+(g==1?'Un birillo coperto da una palla è eliminato.':g+' birilli coperti da una palla sono eliminati.')+'</p>':''
+}
+function updateTopCue(s){
+  if(!s){
+    cueDot.setAttribute('cx', 20);
+    cueTxt.textContent = 'N/D';
+    cueSub.textContent = 'nessun tiro';
+    return;
+  }
+  const spinVal = s.s || 0;
+  cueDot.setAttribute('cx', 20 - spinVal * 10);
+  if(!spinVal){
+    cueTxt.textContent = 'Palla centro';
+    cueSub.textContent = 'senza effetto';
+  } else {
+    cueTxt.textContent = spinVal > 0 ? 'Effetto sx' : 'Effetto dx';
+    cueSub.textContent = Math.abs(spinVal) < 1 ? 'leggero' : 'pieno';
+  }
+}
+function updateNav(){
+  const total = sols.length;
+  if(total === 0){
+    countEl.textContent = '0/0';
+    btnPrev.disabled = true;
+    btnNext.disabled = true;
+  } else {
+    countEl.textContent = `${sel + 1}/${total}`;
+    btnPrev.disabled = (sel === 0);
+    btnNext.disabled = (sel === total - 1);
+  }
+}
+function panel(){
+  updateNav();
+  const s = sols[sel];
+  updateTopCue(s);
+  if(info.err){res.innerHTML='<p class="err" style="margin:0">'+info.err+'</p>'+gnote();return}
+  if(!sols.length){res.innerHTML='<p style="margin:0">Nessun tiro valido con queste posizioni.</p>'+gnote();return}
+  const P=s.P;
+  let h='<div><h2>'+(s.n==0?'Tiro diretto sulla gialla':s.n==1?'1 sponda della bianca':s.n+' sponde della bianca')+(s.m?' · gialla '+s.m+(s.m==1?' sponda':' sponde'):' · gialla diretta')+'</h2><ol>';
+  s.rails.forEach((r,i)=>{h+='<li>'+NAME_V[r]+', '+hitTxt_v(r,P[i+1])+'</li>'});
+  if(!s.n)h+='<li>bianca: colpo diretto sulla gialla</li>';
+  if(!s.m)h+='<li>gialla: va dritta al castello</li>';
+  else h+='<li>gialla: '+s.tr.map((r,i)=>NAME_V[r].replace('sponda ','')+' '+hitTxt_v(r,s.tp[i+1])).join(', ')+', poi castello</li>';
+  h+='</ol><div style="font-size:13.5px;margin-top:5px"><strong>Contatto:</strong> '+frac(s.cut)+' ('+Math.round(s.cut)+'° di sbraccio). '+(s.n?'Mira alla prima sponda.':'Mira alla sagoma tratteggiata.')+'</div></div>';
+  res.innerHTML=h+gnote();
+}
+function update(keep){
+  info=solve_v(MAX_SPONDE);
+  sols=info.sols||[];
+  if(!keep||sel>=sols.length)sel=0;
+  dyn_v();
+  panel();
+}
+svg.innerHTML=base_v();
+update();
+
+btnPrev.addEventListener('click',()=>{if(sel>0){sel--;dyn_v();panel();}});
+btnNext.addEventListener('click',()=>{if(sel<sols.length-1){sel++;dyn_v();panel();}});
+document.getElementById('fx').addEventListener('change',()=>update());
+
+let drag=null,raf=0;
+svg.addEventListener('pointerdown',e=>{
+  const g=e.target.closest('[data-b]');
+  if(!g)return;
+  drag=g.dataset.b;
+  svg.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+svg.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const p=svg.createSVGPoint();
+  p.x=e.clientX;p.y=e.clientY;
+  const q=p.matrixTransform(svg.getScreenCTM().inverse());
+  let x=(q.x-OX)/U, y=H_v-(q.y-OY)/U;
+  x=Math.min(Math.max(x,R),W_v-R);
+  y=Math.min(Math.max(y,R),H_v-R);
+  const o=B_v[drag],old={x:o.x,y:o.y};
+  o.x=x;o.y=y;
+  const balls=['cue','tgt','red'];
+  for(let b of balls){
+    if(b!==drag && Math.hypot(B_v[drag].x-B_v[b].x, B_v[drag].y-B_v[b].y) < D){
+      o.x=old.x; o.y=old.y; return;
+    }
+  }
+  if(!raf)raf=requestAnimationFrame(()=>{raf=0;update(true);});
+});
+const end=()=>{drag=null;};
+svg.addEventListener('pointerup',end);
+svg.addEventListener('pointercancel',end);
+</script></body></html>
